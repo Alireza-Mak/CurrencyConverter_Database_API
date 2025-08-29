@@ -13,7 +13,19 @@ namespace CurrencyConverter_Database_API
         public MainWindow()
         {
             InitializeComponent();
-            setCurrentYear();
+            SetCurrentYear();
+        }
+
+        public void Save_Click(object sender, RoutedEventArgs e)
+        {
+        }
+
+        public void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+        }
+
+        public void DgvCurrency_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
         }
 
         public void Clear_Click(object sender, RoutedEventArgs e)
@@ -38,7 +50,7 @@ namespace CurrencyConverter_Database_API
             e.Handled = true;
         }
 
-        private void setCurrentYear()
+        private void SetCurrentYear()
         {
             int year = System.DateTime.Now.Year;
             currentYear.Text = year + " ";
