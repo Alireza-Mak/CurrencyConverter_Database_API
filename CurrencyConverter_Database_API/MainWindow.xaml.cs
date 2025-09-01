@@ -22,6 +22,8 @@ namespace CurrencyConverter_Database_API
         private SqlDataAdapter sqlDataAdapter;
 
         private int currencyId;
+        private double fromRate;
+        private double toRate;
 
         public MainWindow()
         {
@@ -88,7 +90,7 @@ namespace CurrencyConverter_Database_API
 
                 dataTable.Rows.InsertAt(newRow, 0);
 
-                if (dataTable.Rows.Count > 0)
+                if (dataTable != null && dataTable.Rows.Count > 0)
                 {
                     // Assign the DataTable to cmbFromCurrency and cmbToCurrency ComboBoxes
                     cmbFromCurrency.ItemsSource = dataTable.DefaultView;
@@ -119,7 +121,6 @@ namespace CurrencyConverter_Database_API
                 sqlConnection.Close();
             }
         }
-
 
         /// <summary>
         /// This method clears all input controls on the form, including text boxes and combo boxes.
@@ -160,7 +161,7 @@ namespace CurrencyConverter_Database_API
             sqlCommand = new SqlCommand(query, sqlConnection);
             sqlDataAdapter = new SqlDataAdapter(sqlCommand);
             sqlDataAdapter.Fill(dataTable);
-            if (dataTable.Rows.Count > 0)
+            if (dataTable != null && dataTable.Rows.Count > 0)
             {
                 dgvCurrency.ItemsSource = dataTable.DefaultView;
 
@@ -228,12 +229,13 @@ namespace CurrencyConverter_Database_API
                         sqlCommand = new SqlCommand(query, sqlConnection);
                         sqlDataAdapter = new SqlDataAdapter(sqlCommand);
                         sqlCommand.Parameters.AddWithValue("@Rate", txtRate.Text);
-                        sqlCommand.Parameters.AddWithValue("@CurrencyName", txtRate.Text);
+                        sqlCommand.Parameters.AddWithValue("@CurrencyName", txtCurrencyName.Text.Trim());
                         sqlCommand.Parameters.AddWithValue("@Id", currencyId);
                         sqlCommand.ExecuteScalar();
                         sqlConnection.Close();
                         MessageBox.Show("Data Updated successfully", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
+                    ClearControls();
                     ClearMaster();
                 }
                 else
@@ -249,6 +251,7 @@ namespace CurrencyConverter_Database_API
                         sqlCommand.ExecuteScalar();
                         sqlConnection.Close();
                     }
+                    ClearControls();
                     ClearMaster();
                 }
             }
@@ -341,11 +344,46 @@ namespace CurrencyConverter_Database_API
             }
         }
 
+        /// <summary>
+        /// This method clears all input controls on the form, including text boxes and combo boxes.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         public void Clear_Click(object sender, RoutedEventArgs e)
         {
+            ClearControls();
         }
+        
+        /// <summary>
+        /// This method converts a currency amount from one currency to another based on the selected currencies
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         public void Convert_Click(object sender, RoutedEventArgs e)
         {
+            double convertedValue;
+            if (txtCurrency.Text == null || txtCurrency.Text.Trim() == "")
+            {
+                MessageBox.Show("Please Enter Currency", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                txtCurrency.Focus();
+                return;
+            }
+            else if (cmbFromCurrency.SelectedValue == null || cmbFromCurrency.SelectedIndex == 0 ||
+               cmbToCurrency.SelectedValue == null || cmbToCurrency.SelectedIndex == 0)
+            {
+                cmbFromCurrency.Focus();
+                return;
+            }
+            if (cmbFromCurrency.Text == cmbToCurrency.Text)
+            {
+                convertedValue = double.Parse(txtCurrency.Text);
+                lblCurrency.Content = cmbToCurrency.Text + " " + convertedValue.ToString("N3");
+            }
+            else {
+                convertedValue = (double.Parse(txtCurrency.Text) * toRate)/fromRate;
+
+                lblCurrency.Content = cmbToCurrency.Text + " " + convertedValue.ToString("N3");
+            }
         }
 
         /// <summary>
@@ -359,23 +397,143 @@ namespace CurrencyConverter_Database_API
             e.Handled = regex.IsMatch(e.Text);
         }
 
+        /// <summary>
+        /// This method is used to handle the text changed event of the currency input text box,
+        /// formatting the input to include grouping separators for better readability.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         public void OnInputTextChanged(object sender, TextChangedEventArgs e)
         {
-        }
-        public void Swap_Click(object sender, RoutedEventArgs e)
-        {
+            TextBox textBox = sender as TextBox;
+
+            // Remove commas for parsing
+            string raw = textBox.Text.Replace(",", "");
+
+            // Split into integer + decimal parts
+            string[] parts = raw.Split('.');
+            if (decimal.TryParse(raw, out decimal _))
+            {
+                string intPart = parts[0];
+                string decPart = parts.Length > 1 ? "." + parts[1] : "";
+
+                // Add grouping separators only to integer part
+                if (long.TryParse(intPart, out long intNumber))
+                    textBox.Text = intNumber.ToString("N0") + decPart;
+            }
+
+            // Put caret at the end
+            textBox.Focus();
+            textBox.SelectionStart = textBox.Text.Length;
         }
 
+        /// <summary>
+        /// This method swaps the selected currencies in two combo boxes (cmbFromCurrency and cmbToCurrency)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public void Swap_Click(object sender, RoutedEventArgs e)
+        {
+            if (cmbFromCurrency.Text == cmbToCurrency.Text ||
+                int.Parse(cmbFromCurrency.SelectedValue.ToString()) == 0 ||
+                int.Parse(cmbToCurrency.SelectedValue.ToString()) == 0)
+            {
+                return;
+            }
+            (cmbToCurrency.SelectedIndex, cmbFromCurrency.SelectedIndex) = (cmbFromCurrency.SelectedIndex, cmbToCurrency.SelectedIndex);
+            (toRate, fromRate) = (fromRate, toRate);
+        }
+
+        /// <summary>
+        /// This method handles the navigation request for a hyperlink, opening the specified URL in the default web browser.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
         {
             Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri));
             e.Handled = true;
         }
 
+        /// <summary>
+        /// This method sets the current year in a text control, typically used for displaying the year in a footer or header.
+        /// </summary>
         private void SetCurrentYear()
         {
             int year = System.DateTime.Now.Year;
             currentYear.Text = year + " ";
+        }
+
+        /// <summary>
+        /// This method retrieves the exchange rate for the selected currency from the database
+        /// and updates the internal rate used for currency conversion. It ensures that a valid selection is made before
+        /// querying the database. If an error occurs during the process, an error message is displayed to the
+        /// user.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the combo box control.</param>
+        /// <param name="e">The event data containing information about the selection change.</param>
+        private void CmbFromCurrency_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (cmbFromCurrency.SelectedValue != null && int.Parse(cmbFromCurrency.SelectedValue.ToString()) != 0
+                    && cmbFromCurrency.SelectedIndex != 0)
+                {
+                    int currencyFromId = int.Parse(cmbFromCurrency.SelectedValue.ToString());
+                    DataTable dataTable = new DataTable();
+                    OpenConnection();
+                    string query = "SELECT Rate FROM Currency_Master WHERE Id = @CurrencyFromId";
+                    sqlCommand = new SqlCommand(query, sqlConnection);
+                    sqlDataAdapter = new SqlDataAdapter(sqlCommand);
+                    sqlCommand.Parameters.AddWithValue("@CurrencyFromId", currencyFromId);
+                    sqlDataAdapter.Fill(dataTable);
+                    if (dataTable != null && dataTable.Rows.Count > 0)
+                    {
+                        fromRate = double.Parse(dataTable.Rows[0]["Rate"].ToString());
+                    }
+                    sqlConnection.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// This method retrieves the exchange rate for the selected currency from the database
+        /// and updates the internal rate used for currency conversion. It ensures that a valid selection is made before
+        /// querying the database. If an error occurs during the process, an error message is displayed to the
+        /// user.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the combo box control.</param>
+        /// <param name="e">The event data containing information about the selection change.</param>
+        private void CmbToCurrency_SelectionChanged(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (cmbToCurrency.SelectedValue != null && int.Parse(cmbToCurrency.SelectedValue.ToString()) != 0
+                    && cmbToCurrency.SelectedIndex != 0)
+                {
+                    int currencyToId = int.Parse(cmbToCurrency.SelectedValue.ToString());
+                    DataTable dataTable = new DataTable();
+                    OpenConnection();
+                    string query = "SELECT Rate FROM Currency_Master WHERE Id = @cmbToCurrency";
+                    sqlCommand = new SqlCommand(query, sqlConnection);
+                    sqlDataAdapter = new SqlDataAdapter(sqlCommand);
+                    sqlCommand.Parameters.AddWithValue("@cmbToCurrency", currencyToId);
+                    sqlDataAdapter.Fill(dataTable);
+                    if (dataTable != null && dataTable.Rows.Count > 0)
+                    {
+                        toRate = double.Parse(dataTable.Rows[0]["Rate"].ToString());
+                    }
+                    sqlConnection.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }
