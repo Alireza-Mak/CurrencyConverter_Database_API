@@ -125,6 +125,8 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <DependentUpon>CurrencyConverter.mdf</DependentUpon>
     </Content>
+    <Resource Include="Images\delete-button.png" />
+    <Resource Include="Images\edit-button.png" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.8">

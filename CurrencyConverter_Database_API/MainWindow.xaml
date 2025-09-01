@@ -179,7 +179,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn x:Name="Amount" Header="Amount" Width="100" CanUserResize="False" CanUserReorder="False" Binding="{Binding Path=Amount}" IsReadOnly="True"/>
+                                <DataGridTextColumn x:Name="Rate" Header="Rate" Width="100" CanUserResize="False" CanUserReorder="False" Binding="{Binding Path=Rate}" IsReadOnly="True"/>
                                 <DataGridTextColumn x:Name="CurrencyName" Header="Currency Name" Width="*" MinWidth="20" CanUserResize="False" CanUserReorder="False" Binding="{Binding Path=CurrencyName}" IsReadOnly="True"/>
                             </DataGrid.Columns>
                         </DataGrid>
