@@ -46,7 +46,6 @@ namespace CurrencyConverter_Database_API
             try
             {
                 string connectionString = ConfigurationManager.ConnectionStrings["ConnectionString"].ConnectionString;
-
                 sqlConnection = new SqlConnection(connectionString);
                 sqlConnection.Open();
             }
@@ -195,10 +194,11 @@ namespace CurrencyConverter_Database_API
         }
 
         /// <summary>
-        /// This method validates the input fields for currency name and rate before saving the
-        /// data to the database.  If the inputs are invalid, it displays an appropriate message to the user. If the
-        /// inputs are valid,  the user is prompted for confirmation before the data is saved. Any exceptions
-        /// encountered during the  operation are displayed to the user as error messages.
+        /// This method validates the input fields for currency name and rate before performing
+        /// the save or update operation. If the <c>currencyId</c> is greater than zero, the method updates the existing
+        /// currency record; otherwise, it inserts a new record. Confirmation dialogs are displayed before performing
+        /// save or update operations. Any exceptions encountered during the operation are displayed to the user in a
+        /// message box.
         /// </summary>
         /// <param name="sender">The source of the event, typically the Save button.</param>
         /// <param name="e">The event data associated with the click event.</param>
@@ -219,19 +219,38 @@ namespace CurrencyConverter_Database_API
                     txtRate.Focus();
                     return;
                 }
-                if (MessageBox.Show("Are you sure you want to Save ?", "Information",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (currencyId != 0 && currencyId > 0)
                 {
-                    OpenConnection();
-                    string query = "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@CurrencyName, @Rate)";
-                    sqlCommand = new SqlCommand(query, sqlConnection);
-                    sqlDataAdapter = new SqlDataAdapter(sqlCommand);
-                    sqlCommand.Parameters.AddWithValue("@CurrencyName", txtCurrencyName.Text.Trim());
-                    sqlCommand.Parameters.AddWithValue("@Rate", float.Parse(txtRate.Text));
-                    sqlCommand.ExecuteScalar();
-                    sqlConnection.Close();
+                    if (MessageBox.Show("Are you sure you want to Update ?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    {
+                        OpenConnection();
+                        string query = "UPDATE Currency_Master SET Rate = @Rate, CurrencyName = @CurrencyName WHERE Id = @Id";
+                        sqlCommand = new SqlCommand(query, sqlConnection);
+                        sqlDataAdapter = new SqlDataAdapter(sqlCommand);
+                        sqlCommand.Parameters.AddWithValue("@Rate", txtRate.Text);
+                        sqlCommand.Parameters.AddWithValue("@CurrencyName", txtRate.Text);
+                        sqlCommand.Parameters.AddWithValue("@Id", currencyId);
+                        sqlCommand.ExecuteScalar();
+                        sqlConnection.Close();
+                        MessageBox.Show("Data Updated successfully", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    ClearMaster();
                 }
-
+                else
+                {
+                    if (MessageBox.Show("Are you sure you want to Save ?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    {
+                        OpenConnection();
+                        string query = "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@CurrencyName, @Rate)";
+                        sqlCommand = new SqlCommand(query, sqlConnection);
+                        sqlDataAdapter = new SqlDataAdapter(sqlCommand);
+                        sqlCommand.Parameters.AddWithValue("@CurrencyName", txtCurrencyName.Text.Trim());
+                        sqlCommand.Parameters.AddWithValue("@Rate", txtRate.Text);
+                        sqlCommand.ExecuteScalar();
+                        sqlConnection.Close();
+                    }
+                    ClearMaster();
+                }
             }
             catch (Exception ex)
             {
@@ -239,12 +258,87 @@ namespace CurrencyConverter_Database_API
             }
         }
 
+        /// <summary>
+        /// Handles the click event for the Cancel button.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the Cancel button.</param>
+        /// <param name="e">The event data associated with the click event.</param>
         public void Cancel_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                ClearMaster();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
+        /// <summary>
+        /// This method performs the following actions based on the selected cell: 
+        /// If the selected cell is in the "Edit" column, it populates the UI fields with the selected currency's details for editing.
+        /// If the selected cell is in the "Delete" column, it prompts the user for confirmation and deletes the selected currency if
+        /// confirmed, the method assumes that the DataGrid's items are bound to a collection of objects,  and that the "Id", "Rate",
+        /// and "CurrencyName" fields exist in the data source.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the <see cref="DataGrid"/> that triggered the event.</param>
+        /// <param name="e">The event data containing information about the changed selection.</param>
         public void DgvCurrency_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
         {
+            try
+            {
+                //Create object for DataGrid
+                DataGrid grid_container = (DataGrid)sender;
+
+                //Create object for DataRowView
+                DataRowView row_selected = grid_container.CurrentItem as DataRowView;
+
+                //row_selected is not null
+                if (row_selected != null)
+                {
+                    if (grid_container.Items.Count > 0)
+                    {
+                        if (dgvCurrency.Items.Count > 0)
+                        {
+                            if (grid_container.SelectedCells.Count > 0)
+                            {
+                                // Get the Id of the selected currency from the DataRowView
+                                currencyId = Int32.Parse(row_selected["Id"].ToString());
+
+                                //DisplayIndex is equal to one than it is Edit cell  
+                                if (grid_container.SelectedCells[0].Column.DisplayIndex == 0)
+                                {
+                                    txtRate.Text = row_selected["Rate"].ToString();
+                                    txtCurrencyName.Text = row_selected["CurrencyName"].ToString();
+                                    btnSave.Content = "Update";
+                                }
+
+                                //DisplayIndex is equal to one than it is Delete cell  
+                                if (grid_container.SelectedCells[0].Column.DisplayIndex == 1)
+                                {
+                                    if (MessageBox.Show("Are you sure you want to delete ?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                                    {
+                                        OpenConnection();
+                                        string query = "DELETE FROM Currency_Master WHERE Id=@Id";
+                                        sqlCommand = new SqlCommand(query, sqlConnection);
+                                        sqlDataAdapter = new SqlDataAdapter(sqlCommand);
+                                        sqlCommand.Parameters.AddWithValue("@Id", currencyId);
+                                        sqlCommand.ExecuteScalar();
+                                        sqlConnection.Close();
+                                        MessageBox.Show("Data deleted successfully", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                                        ClearMaster();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public void Clear_Click(object sender, RoutedEventArgs e)
