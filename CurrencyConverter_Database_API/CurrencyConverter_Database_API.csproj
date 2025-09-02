@@ -77,7 +77,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Root.cs" />
+    <Compile Include="Models\Rate.cs" />
+    <Compile Include="Models\Root.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -124,10 +125,6 @@
   <ItemGroup>
     <Content Include="Database\CurrencyConverter.mdf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Database\CurrencyConverter_log.ldf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <DependentUpon>CurrencyConverter.mdf</DependentUpon>
     </Content>
     <Resource Include="Images\delete-button.png" />
     <Resource Include="Images\edit-button.png" />

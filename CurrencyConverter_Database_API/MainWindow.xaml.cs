@@ -215,7 +215,6 @@ namespace CurrencyConverter_Database_API
             if (dataTable != null && dataTable.Rows.Count > 0)
             {
                 dgvCurrency.ItemsSource = dataTable.DefaultView;
-
             }
             else
             {
@@ -227,7 +226,7 @@ namespace CurrencyConverter_Database_API
         /// <summary>
         /// This method clears the input fields and resets the form to its initial state.
         /// </summary>
-        public async void ClearMaster()
+        public void ClearMaster()
         {
             try
             {
@@ -273,7 +272,7 @@ namespace CurrencyConverter_Database_API
                 }
                 if (currencyId != 0 && currencyId > 0)
                 {
-                    if (MessageBox.Show("Are you sure you want to Update ?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    if (MessageBox.Show($"Are you sure you want to update {txtCurrencyName.Text.Trim()} with rate {txtRate.Text}?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                     {
                         OpenConnection();
                         string query = "UPDATE Currency_Master SET Rate = @Rate, CurrencyName = @CurrencyName WHERE Id = @Id";
@@ -371,7 +370,7 @@ namespace CurrencyConverter_Database_API
                                 //DisplayIndex is equal to one than it is Delete cell  
                                 if (grid_container.SelectedCells[0].Column.DisplayIndex == 1)
                                 {
-                                    if (MessageBox.Show("Are you sure you want to delete ?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                                    if (MessageBox.Show($"Are you sure you want to delete {row_selected.Row.ItemArray[2]}?", "Information", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                                     {
                                         OpenConnection();
                                         string query = "DELETE FROM Currency_Master WHERE Id=@Id";
