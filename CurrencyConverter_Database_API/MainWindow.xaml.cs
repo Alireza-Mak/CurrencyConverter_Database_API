@@ -3,10 +3,13 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Newtonsoft.Json;
 
 namespace CurrencyConverter_Database_API
 {
@@ -25,18 +28,66 @@ namespace CurrencyConverter_Database_API
         private double fromRate;
         private double toRate;
 
+        private static string URL = "https://openexchangerates.org/api/latest.json?app_id=927fe7415f704c2dbe160fb63c74159e";
+
+        private static Root API_RESPONE;
         public MainWindow()
         {
             InitializeComponent();
             SetCurrentYear();
+            BindDatabase();
+        }
 
-            // Clear all input controls
-            ClearControls();
+        /// <summary>
+        /// This method fetches currency data from an external API and updates the local database with the latest exchange rates.
+        /// </summary>
+        public async void BindDatabase()
+        {
+            try
+            {
+                API_RESPONE = await GetDataAsync(URL);
+                if (API_RESPONE != null)
+                {
+                    OpenConnection();
+                    string query = "DELETE FROM Currency_Master " +
+                                   "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@USD, @USDRate) " +
+                                   "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@CAD, @CADRate) " +
+                                   "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@EUR, @EURRate) " +
+                                   "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@GBP, @GBPRate) " +
+                                   "INSERT INTO Currency_Master (CurrencyName, Rate) VALUES (@QAR, @QARRate)";
+                    sqlCommand = new SqlCommand(query, sqlConnection);
+                    sqlDataAdapter = new SqlDataAdapter(sqlCommand);
+                    sqlCommand.Parameters.AddWithValue("@USD", "USD");
+                    sqlCommand.Parameters.AddWithValue("@USDRate", API_RESPONE.rates.USD);
+                    sqlCommand.Parameters.AddWithValue("@CAD", "CAD");
+                    sqlCommand.Parameters.AddWithValue("@CADRate", API_RESPONE.rates.CAD);
+                    sqlCommand.Parameters.AddWithValue("@EUR", "EUR");
+                    sqlCommand.Parameters.AddWithValue("@EURRate", API_RESPONE.rates.EUR);
+                    sqlCommand.Parameters.AddWithValue("@GBP", "GBP");
+                    sqlCommand.Parameters.AddWithValue("@GBPRate", API_RESPONE.rates.GBP);
+                    sqlCommand.Parameters.AddWithValue("@QAR", "QAR");
+                    sqlCommand.Parameters.AddWithValue("@QARRate", API_RESPONE.rates.QAR);
+                    sqlCommand.ExecuteScalar();
+                }
+                sqlConnection.Close();
+            }
+            catch (SqlException ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                sqlConnection.Close();
+                // Clear all input controls
+                ClearControls();
 
-            //clear master
-            ClearMaster();
-
-
+                //clear master
+                ClearMaster();
+            }
         }
 
         /// <summary>
@@ -176,7 +227,7 @@ namespace CurrencyConverter_Database_API
         /// <summary>
         /// This method clears the input fields and resets the form to its initial state.
         /// </summary>
-        public void ClearMaster()
+        public async void ClearMaster()
         {
             try
             {
@@ -353,7 +404,7 @@ namespace CurrencyConverter_Database_API
         {
             ClearControls();
         }
-        
+
         /// <summary>
         /// This method converts a currency amount from one currency to another based on the selected currencies
         /// </summary>
@@ -379,8 +430,9 @@ namespace CurrencyConverter_Database_API
                 convertedValue = double.Parse(txtCurrency.Text);
                 lblCurrency.Content = cmbToCurrency.Text + " " + convertedValue.ToString("N3");
             }
-            else {
-                convertedValue = (double.Parse(txtCurrency.Text) * toRate)/fromRate;
+            else
+            {
+                convertedValue = (double.Parse(txtCurrency.Text) * toRate) / fromRate;
 
                 lblCurrency.Content = cmbToCurrency.Text + " " + convertedValue.ToString("N3");
             }
@@ -534,6 +586,45 @@ namespace CurrencyConverter_Database_API
             {
                 MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>
+        /// This asynchronous method fetches JSON data from a specified URL using an HTTP GET request.
+        /// The method deserializes the JSON response into a Root object and returns it.
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        public static async Task<Root> GetDataAsync(string url)
+        {
+            Root root = new Root();
+            try
+            {
+                // Create an instance of HttpClient to send HTTP requests
+                using (var client = new HttpClient())
+                {
+                    // The timespan to wait before the request times out.
+                    client.Timeout = TimeSpan.FromMinutes(1);
+
+                    // Send a GET request to the specified URL
+                    HttpResponseMessage response = await client.GetAsync(url);
+
+                    // Check if the response status code indicates success
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        //Serialize the JSON response to the Root object
+                        string result = await response.Content.ReadAsStringAsync();
+
+                        // Deserialize the JSON response to the Root object
+                        root = JsonConvert.DeserializeObject<Root>(result);
+                        return root;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            return root;
         }
     }
 }
